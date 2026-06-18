@@ -1,0 +1,420 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SFA Frontend - Claude Code 구조 대안별 종합 논의서</title>
+    <style>
+        :root {
+            --bg-color: #121212;
+            --card-bg: #1e1e1e;
+            --nested-card: #252525;
+            --text-main: #ffffff;
+            --text-sub: #b4b4b4;
+            --teal-point: #00a896;
+            --yellow-point: #ffbc42;
+            --border-color: #2d2d2d;
+            --code-bg: #0d0d0d;
+        }
+        body {
+            font-family: 'Malgun Gothic', -apple-system, BlinkMacSystemFont, sans-serif;
+            background-color: var(--bg-color);
+            color: var(--text-main);
+            line-height: 1.7;
+            margin: 0;
+            padding: 50px 20px;
+        }
+        .container {
+            max-width: 1050px;
+            margin: 0 auto;
+        }
+        .header {
+            border-bottom: 2px solid var(--teal-point);
+            padding-bottom: 20px;
+            margin-bottom: 30px;
+        }
+        h1 {
+            color: var(--teal-point);
+            font-size: 30px;
+            margin: 0 0 10px 0;
+        }
+        h2 {
+            color: var(--teal-point);
+            font-size: 22px;
+            margin-top: 40px;
+            border-left: 5px solid var(--teal-point);
+            padding-left: 15px;
+        }
+        h3 {
+            color: var(--yellow-point);
+            font-size: 18px;
+            margin-top: 25px;
+        }
+        p, li {
+            color: var(--text-sub);
+            font-size: 15px;
+        }
+        ul, ol {
+            padding-left: 20px;
+        }
+        .card {
+            background-color: var(--card-bg);
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            padding: 25px;
+            margin-bottom: 25px;
+        }
+        .nested-card {
+            background-color: var(--nested-card);
+            border-left: 4px solid var(--yellow-point);
+            padding: 15px;
+            margin: 15px 0;
+            border-radius: 0 6px 6px 0;
+        }
+        pre {
+            background-color: var(--code-bg);
+            color: #e6e6e6;
+            padding: 15px;
+            border-radius: 6px;
+            font-family: 'Consolas', monospace;
+            font-size: 14px;
+            overflow-x: auto;
+            border: 1px solid var(--border-color);
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 20px 0;
+            background-color: var(--card-bg);
+        }
+        th, td {
+            border: 1px solid var(--border-color);
+            padding: 12px;
+            text-align: left;
+            font-size: 14px;
+        }
+        th {
+            background-color: #2a2a2a;
+            color: var(--teal-point);
+            font-weight: bold;
+        }
+        .badge {
+            display: inline-block;
+            padding: 4px 10px;
+            border-radius: 4px;
+            font-weight: bold;
+            font-size: 13px;
+            margin-right: 5px;
+        }
+        .badge-done { background-color: #1b5e20; color: #a5d6a7; border: 1px solid #81c784; }
+        .badge-ing { background-color: #e65100; color: #ffcc80; border: 1px solid #ffb74d; }
+        .badge-err { background-color: #b71c1c; color: #ef9a9a; border: 1px solid #e57373; }
+        
+        /* 타겟 탭 스타일 */
+        .tab-menu {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 30px;
+            border-bottom: 2px solid var(--border-color);
+            padding-bottom: 10px;
+        }
+        .tab-btn {
+            background-color: #262626;
+            color: var(--text-sub);
+            border: 1px solid var(--border-color);
+            padding: 12px 24px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 16px;
+            font-weight: bold;
+            transition: all 0.3s ease;
+        }
+        .tab-btn:hover {
+            background-color: #333;
+            color: #fff;
+        }
+        .tab-btn.active {
+            background-color: var(--teal-point);
+            color: #fff;
+            border-color: var(--teal-point);
+        }
+        .tab-content {
+            display: none;
+        }
+        .tab-content.active {
+            display: block;
+        }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <div class="header">
+        <h1>📊 Claude Code 멀티 솔루션 협업 통제권 수립 논의서</h1>
+        <p>SFA 프론트엔드 Turborepo 모노레포 구조하에 충돌 방지 및 히스토리 자동 분류 시스템 설계안</p>
+    </div>
+
+    <h2>1. 프로젝트 개요 및 문제 정의</h2>
+    <div class="card">
+        <p><b>현황 아키텍처:</b> 본 프로젝트는 단일 저장소 내에 6개의 독립적인 Next.js 앱(솔루션)들이 들어있는 Turborepo 모노레포 구조입니다. 비즈니스 코어와 도메인은 분리되어 있으며, 각 솔루션별로 담당 개발자가 다르게 배정되어 스프린트를 이어 나갑니다.</p>
+        <p><b>도입 배경 및 문제점:</b> 개발 생산성 향상을 위해 Claude Code를 전면 도입함에 따라 진척도 관리를 일원화해야 하는 니즈가 발생했습니다. 그러나 하나의 문서 파일(`PROGRESS.md`)에 여러 개발자의 작업 진척도를 무작정 쑤셔 넣으면 <b>형상 관리 레벨에서 극심한 Git 충돌(Conflict)이 필연적으로 야기</b>되며, 개발자 개인의 로컬 메모와 팀 공유 문서가 뒤섞여 프로젝트 컨텍스트가 훼손되는 심각한 병목 현상이 발생합니다.</p>
+    </div>
+
+    <h2>📌 대안별 구조 및 규칙 선택 가이드</h2>
+    <p style="margin-bottom: 20px;">아래 탭을 클릭하시면 각 아키텍처 모델별 토큰 사용 효율, 파일 구조 예시, 세션 스크립트 가이드, 그리고 매칭되는 상태 관리 체계를 한눈에 대조하여 파악할 수 있습니다.</p>
+
+    <div class="tab-menu">
+        <button class="tab-btn active" onclick="openTab('option1')">① 하이브리드 완전 격리형</button>
+        <button class="tab-btn" onclick="openTab('option2')">② 루트 파일 플랫 분할형</button>
+        <button class="tab-btn" onclick="openTab('option3')">③ 루트 폴더 분할형</button>
+    </div>
+
+    <div id="option1" class="tab-content active">
+        <h2>2. 토큰 사용 효율 분석 (대안 ①)</h2>
+        <div class="card">
+            <p><b style="color:#b4b4b4; font-size:18px;">📊 토큰 효율: 세 대안 간 차이는 미미 (단일 자릿수 %)</b></p>
+            <p><b>먼저 짚을 점:</b> Claude Code는 <code>docs/</code> 안의 문서를 자동으로 메모리에 선(先)로딩하지 않습니다. 파일은 도구로 <b>필요할 때만</b> 읽습니다. 따라서 "다른 솔루션 문서까지 항상 토큰에 누적된다"는 전제는 성립하지 않으며, 구조 선택만으로 토큰을 수십 % 절감한다는 주장은 사실과 다릅니다.</p>
+            <p>개별 솔루션 폴더(예: <code>apps/work-support/</code>)로 진입해 실행하면 탐색 경로가 단순해지는 장점은 있으나, 동시에 <b>앱 디렉토리의 CLAUDE.md가 글로벌·루트 CLAUDE.md 위에 매 턴 추가로 로드</b>되어 정적 컨텍스트가 오히려 소폭 늘 수 있습니다. 결과적으로 토큰 측면의 순(純)이득은 사실상 없거나 무시할 수준입니다.</p>
+        </div>
+
+        <h2>3. 디렉토리 구조도 및 상세 파일 예시 (대안 ①)</h2>
+        <div class="card">
+            <p>모든 공유 문서 아카이브가 소스코드와 함께 개별 솔루션 내부 디렉토리에 매립되는 구조입니다.</p>
+            <pre>
+my-project/
+├── CLAUDE.md                     # [전역] 전체 프로젝트 빌드 및 시스템 공통 제약사항
+├── .gitignore                    # **/*.local.md 패턴 등록 (개인 파일 원천 차단)
+└── apps/
+    ├── work-support/             # 📂 [문의안내 솔루션 전용 폴더]
+    │   ├── CLAUDE.md             #   👥 앱 내부 전용 공유 규칙 (작업 범위 한정)
+    │   ├── CLAUDE.local.md       #   🔒 담당자 로컬 전용 메모 (Git 추적 제외)
+    │   └── docs/                 #   📂 이 솔루션 전용 독립 문서 공간 (충돌 0%)
+    │       ├── PROGRESS.md       #     - 문의안내 진척도 히스토리 로그
+    │       ├── DECISIONS.md      #     - 문의안내 도메인 내 기술 결정 사항
+    │       └── 게시판-규칙.md     #     - [특화 예시] 문의안내 게시판 특화 도메인 운영/QA 가이드 규칙서
+    │
+    └── approval/                 # 📂 [품의결제 솔루션 전용 폴더]
+        ├── CLAUDE.md             
+        ├── CLAUDE.local.md       
+        └── docs/                 
+            ├── PROGRESS.md       
+            └── 전자결제-라인-컨벤션.md # - [특화 예시] 품의결제 직급별 전결/결제선 자동 지정 가이드라인
+            </pre>
+        </div>
+
+        <h2>4. 컨텍스트 이원화 관리 기준 (대안 ①)</h2>
+        <table>
+            <thead>
+                <tr>
+                    <th>항목</th>
+                    <th>👥 팀 공유용 가이드 (`apps/&lt;솔루션&gt;/docs/PROGRESS.md`)</th>
+                    <th>🔒 개발자 개인용 가이드 (`apps/&lt;솔루션&gt;/CLAUDE.local.md`)</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr>
+                    <th>Git 형상관리</th>
+                    <td><b style="color:var(--teal-point);">포함 (O)</b> - 커밋 대상</td>
+                    <td><b style="color:var(--yellow-point);">제외 (X)</b> - 로컬 저장</td>
+                </tr>
+                <tr>
+                    <th>제한 범위</th>
+                    <td>해당 앱 디렉토리 내로 스코프가 확실히 격리되어 타 담당자 문서 오염 불가능</td>
+                    <td>담당 개발자 로컬 PC 내 독립 보관</td>
+                </tr>
+            </tbody>
+        </table>
+
+        <h2>5. 대화 자동 제어를 위한 skill.md 가이드라인 (대안 ①)</h2>
+        <div class="card">
+            <p>개별 서브 폴더 안에서 <code>claude</code>가 동작하므로 컨텍스트 탐색 경로가 매우 단순하고 명확합니다.</p>
+            <pre>
+[☀️ 아침 출근: /resume]
+1. 현재 터미널이 상주 중인 앱 디렉토리(PWD) 내부의 'CLAUDE.md'를 조회한다.
+2. 매칭 추측을 건너뛰고 바로 본 폴더 하위의 `docs/PROGRESS.md` 및 로컬 `CLAUDE.local.md`를 즉시 Parallel 로드한다.
+3. 수동 질문 단계 없이 "이 솔루션의 지난 작업 상태는 X입니다. Y 태스크로 이어서 개발을 시작할까요?" 형태로 기민하게 브리핑을 출력한다.
+
+[🌙 저녁 퇴근: /wrap]
+1. 세션 대화 내역을 복기하여 Git에 반영 완료된 핵심 피처는 현재 솔루션 폴더 내 `docs/PROGRESS.md`에 추가한다.
+2. 로컬 디버깅 찌꺼기 및 리마인더는 현재 폴더 내 `CLAUDE.local.md`에 분할 보관한다.
+3. 작업 디렉토리가 격리되어 있으므로 타 폴더 침범을 원천 차단하며 최종 수정 파일 목록을 리포트한다.
+            </pre>
+        </div>
+
+        <h2>6. 팀 컨센서스: 표준화 상태 관리 가이드 (대안 ①)</h2>
+        <div class="card">
+            <div class="nested-card" style="border-left-color: #4caf50;"><span class="badge badge-done">🚀 완결 (Done)</span> 이 솔루션 내 담당 컴포넌트 개발 및 단위 테스트가 끝나 즉시 상위 레포에 PR 오픈 및 브랜치 병합이 가능한 독립 완결 상태.</div>
+            <div class="nested-card" style="border-left-color: #ff9800;"><span class="badge badge-ing">⏳ 미완 (Pending)</span> 정상 빌드되나 현 도메인 기능 구현 스펙이 일부 남아 다음 날 이 폴더 안에서 작업을 다시 이어 나가야 하는 진행 상태.</div>
+            <div class="nested-card" style="border-left-color: #f44336;"><span class="badge badge-err">🚨 블록 (Blocked)</span> 현재 솔루션 소스 컴파일 에러 혹은 타 모듈 API 지연으로 인해 로컬 개발 행위가 전면 동결된 차단 상태.</div>
+        </div>
+    </div>
+
+    <div id="option2" class="tab-content">
+        <h2>2. 토큰 사용 효율 분석 (대안 ②)</h2>
+        <div class="card">
+            <p><b style="color:#b4b4b4; font-size:18px;">📊 토큰 효율: 세 대안 중 가장 불리하나, 그 차이도 작음</b></p>
+            <p>모든 개발자가 루트 저장소(<code>my-project/</code>)에서 일괄 구동하더라도 Claude가 <code>docs/</code> 전체를 메모리에 올리지는 않습니다. 다만 <code>/resume</code> 시 단일 <code>docs/</code> 폴더를 글롭·스캔할 때 수십 개의 타 솔루션 파일명이 목록에 함께 노출되어 <b>세션 시작당 약 수백 토큰</b>이 추가됩니다.</p>
+            <p>토큰량 자체보다 더 큰 리스크는 <b>접두사(Prefix) 오타로 엉뚱한 파일을 읽는 경우</b>입니다. 잘못 읽으면 1~4k 토큰이 헛되이 소모되고 컨텍스트도 오염됩니다. 절대량은 세션 전체의 1~2% 미만으로 작지만, 세 대안 중에서는 가장 비효율적입니다.</p>
+        </div>
+
+        <h2>3. 디렉토리 구조도 및 상세 파일 예시 (대안 ②)</h2>
+        <div class="card">
+            <p>최상위 공통 폴더 한 곳에 접두사(Prefix) 판별명을 붙여 플랫하게 파일을 군집하는 형태입니다.</p>
+            <pre>
+my-project/
+├── CLAUDE.md                     # [전역] 전체 프로젝트 공통 규칙 가이드라인
+├── .gitignore                    # **/*.local.md 패턴 등록 (개인 파일 차단)
+└── docs/                         # [문서 통합 저장소 - 단일 Flat 계층]
+    ├── PROJECT_PLAN.md           # [공통] 전사 마스터 종합 로드맵
+    │
+    ├── work-support_PROGRESS.md  # 👥 [문의안내] 팀 공유용 공식 진척도 로그
+    ├── work-support_DECISIONS.md # 👥 [문의안내] 도메인 기술 결정 사항
+    ├── work-support_게시판-규칙.md # 💡 [특화 예시] 문의안내 게시판 특화 도메인 가이드 규칙서
+    │
+    ├── approval_PROGRESS.md      # 👥 [품의결제] 팀 공유용 공식 진척도 로그
+    └── approval_전자결제-라인-컨벤션.md # 💡 [특화 예시] 품의결제 직급별 전결/결제선 가이드라인
+            </pre>
+        </div>
+
+        <h2>4. 컨텍스트 이원화 관리 기준 (대안 ②)</h2>
+        <table>
+            <thead>
+                <tr>
+                    <th>항목</th>
+                    <th>👥 팀 공유용 가이드 (`docs/&lt;솔루션&gt;_PROGRESS.md`)</th>
+                    <th>🔒 개발자 개인용 가이드 (`./CLAUDE.local.md`)</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr>
+                    <th>Git 형상관리</th>
+                    <td><b style="color:var(--teal-point);">포함 (O)</b> - 커밋 대상</td>
+                    <td><b style="color:var(--yellow-point);">제외 (X)</b> - 로컬 저장</td>
+                </tr>
+                <tr>
+                    <th>제한 범위</th>
+                    <td>접두사 문자열 매칭 기반 분류. 오타 발생 시 엉뚱한 타인 공유 문서가 수정될 리스크 있음</td>
+                    <td>최상위 루트에 `CLAUDE.local.md` 단일 파일로 존재</td>
+                </tr>
+            </tbody>
+        </table>
+
+        <h2>5. 대화 자동 제어를 위한 skill.md 가이드라인 (대안 ②)</h2>
+        <div class="card">
+            <p>단일 디렉토리 내에서 명확한 파일명 접두사 규칙(String Prefix Match)을 지정하여 유도해야 합니다.</p>
+            <pre>
+[☀️ 아침 출근: /resume]
+1. 루트에서 동작하므로, 현재 작업 중인 브랜치명(예: feature/work-support)을 1순위 식별자로 획득한다.
+2. 획득한 식별자 코어명을 바탕으로 `docs/[식별자명]_PROGRESS.md` 규칙 매칭 파일을 정밀 스캔한다.
+3. "현재 브랜치 정보를 기반으로 [work-support] 진척도 로그를 스캔했습니다. 이어서 진행할까요?"라고 컨펌을 구한다.
+
+[🌙 저녁 퇴근: /wrap]
+1. 세션의 변경 로그를 추출하여 파일 수정을 실행할 때, 반드시 접두사명이 명시된 `docs/&lt;현재솔루션명&gt;_PROGRESS.md` 형태로 타겟 파일명을 동적 연산하여 어펜드한다.
+2. 문자열 결합 실수로 인해 타 솔루션 파일을 덮어쓰지 않도록 엄격한 파일 쓰기 규칙 검증을 거친다.
+            </pre>
+        </div>
+
+        <h2>6. 팀 컨센서스: 표준화 상태 관리 가이드 (대안 ②)</h2>
+        <div class="card">
+            <div class="nested-card" style="border-left-color: #4caf50;"><span class="badge badge-done">🚀 완결 (Done)</span> 멀티 솔루션 간 상호 영향도가 완전히 체크되었으며 해당 접두사 파일에 기록을 마친 배포 대기 상태.</div>
+            <div class="nested-card" style="border-left-color: #ff9800;"><span class="badge badge-ing">⏳ 미완 (Pending)</span> 루트 문서 내 내 솔루션 라인에 기록을 마쳤으며 기획 상세 기능이 덜 구현되어 내일 브랜치 작업을 지속해야 하는 상태.</div>
+            <div class="nested-card" style="border-left-color: #f44336;"><span class="badge badge-err">🚨 블록 (Blocked)</span> 단일 docs/ 인덱싱 과정 중 타 담당자와의 소스 충돌이나 인프라 버그가 겹쳐 전사 조율이 긴급 수반되어야 하는 상태.</div>
+        </div>
+    </div>
+
+    <div id="option3" class="tab-content">
+        <h2>2. 토큰 사용 효율 분석 (대안 ③)</h2>
+        <div class="card">
+            <p><b style="color:#ffbc42; font-size:18px;">⚖️ 토큰 효율: 대안 ①과 동등 (사실상 최적), 단 절감폭 자체는 작음</b></p>
+            <p>루트 저장소(<code>my-project/</code>)에서 일괄 실행하되, <code>/resume</code> 단계에서 타겟을 <code>docs/work-support/</code> 하위로 좁히므로 디렉토리 스캔이 2~3개 파일로 압축됩니다(약 50~150 토큰). 단일 flat 폴더를 훑는 대안 ②(수백 토큰 + 오타 리스크) 대비 아끼는 양은 <b>세션 시작당 대략 수백 ~ 1~2k 토큰</b> 수준입니다.</p>
+            <p><b>핵심:</b> 토큰 절감폭은 세션 전체로 보면 1~2% 미만으로 크지 않습니다. 이 구조의 진짜 가치는 토큰이 아니라 <b>① Git 충돌 원천 차단, ② 폴더 경로로 타겟이 고정되어 남의 문서를 잘못 건드릴 위험이 없는 "타겟 정확도"</b>에 있습니다 — 이것이 본 문서가 제기한 원래 문제의 직접적인 해법입니다.</p>
+        </div>
+
+        <h2>3. 디렉토리 구조도 및 상세 파일 예시 (대안 ③)</h2>
+        <div class="card">
+            <p>통합 문서 구역 내부에서 계층형 폴더 트리(Sub-Directory Tier)를 타고 들어가 관리의 영속성을 챙기는 모델입니다.</p>
+            <pre>
+my-project/
+├── CLAUDE.md                     # [전역] 전체 프로젝트 공통 가이드 및 제약 제어
+├── .gitignore                    # **/*.local.md 패턴 등록 (개인 파일 차단)
+└── docs/                         # [문서 통합 저장소 - 중앙 계층형 구조]
+    ├── PROJECT_PLAN.md           # [공통] 전사 마스터 로드맵 및 활성 솔루션 인덱스 파악 문서
+    │
+    ├── work-support/             # 📂 [문의안내 솔루션 전용 폴더]
+    │   ├── PROGRESS.md           #   👥 팀 공유용 공식 진척도 로그 (Git 포함)
+    │   ├── DECISIONS.md          #   👥 해당 도메인 내 기술 결정 사항 (Git 포함)
+    │   └── 게시판-규칙.md         #   💡 [특화 예시] 문의안내 게시판 특화 도메인 운영/QA 가이드 규칙서
+    │
+    └── approval/                 # 📂 [품의결제 솔루션 전용 폴더]
+        ├── PROGRESS.md           
+        ├── DECISIONS.md          
+        └── 전자결제-라인-컨벤션.md  #   💡 [특화 예시] 품의결제 직급별 전결/결제선 업무 가이드라인 정의서
+            </pre>
+        </div>
+
+        <h2>4. 컨텍스트 이원화 관리 기준 (대안 ③)</h2>
+        <table>
+            <thead>
+                <tr>
+                    <th>항목</th>
+                    <th>👥 팀 공유용 가이드 (`docs/&lt;솔루션폴더&gt;/PROGRESS.md`)</th>
+                    <th>🔒 개발자 개인용 가이드 (`./CLAUDE.local.md`)</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr>
+                    <th>Git 형상관리</th>
+                    <td><b style="color:var(--teal-point);">포함 (O)</b> - 커밋 대상</td>
+                    <td><b style="color:var(--yellow-point);">제외 (X)</b> - 로컬 저장</td>
+                </tr>
+                <tr>
+                    <th>제한 범위</th>
+                    <td>지정된 독립 하위 폴더의 패스 지정을 통해 관리되므로 타 솔루션 문서 영역과 오염 원천 분리</td>
+                    <td>최상위 혹은 개별 디렉토리에 안착하여 관리</td>
+                </tr>
+            </tbody>
+        </table>
+
+        <h2>5. 대화 자동 제어를 위한 skill.md 가이드라인 (대안 ③)</h2>
+        <div class="card">
+            <p>세션 초기화 시 명시적 수동 선택 가이드를 선언하여 오판 없는 완벽한 자동 경로 분류를 이룩합니다.</p>
+            <pre>
+[☀️ 아침 출근: /resume]
+1. `apps/` 런타임 조회를 통해 존재하는 솔루션 목록 리스트를 동적으로 추출한다.
+2. 개발자에게 "오늘 작업하실 활성 솔루션을 선택해 주세요: [main, work-support, approval...]" 질문을 즉시 발화한다.
+3. 지정된 레이블(예: work-support) 경로를 획득하여 `docs/work-support/PROGRESS.md` 및 규칙서들을 오차 없이 메모리 동기화한다.
+
+[🌙 저녁 퇴근: /wrap]
+1. 아침에 고정 락(Lock)이 적용된 활성 도메인 공간 `docs/work-support/PROGRESS.md` 최상단에 오늘 코딩 결과 로그를 자동 인젝션한다.
+2. 만약 작업 스펙 완료 상태가 다소 모호하다면, 독단적으로 기록하지 않고 최종 컨펌 검증 프로토콜을 수행한다:
+   > "상세 페이지 로직이 남아있는데, [⏳미완]으로 PROGRESS에 추가할까요?"
+            </pre>
+        </div>
+
+        <h2>6. 팀 컨센서스: 표준화 상태 관리 가이드 (대안 ③)</h2>
+        <div class="card">
+            <div class="nested-card" style="border-left-color: #4caf50;"><span class="badge badge-done">🚀 완결 (Done)</span> 기능 및 로컬 교차 검증이 완수되어 지정된 솔루션 폴더 내 PROGRESS에 성공적으로 도장 찍은 PR 가능 상태.</div>
+            <div class="nested-card" style="border-left-color: #ff9800;"><span class="badge badge-ing">⏳ 미완 (Pending)</span> 에러 없이 정상 구동 및 커밋은 되었으나, 잔여 상세 기능 명세가 존재하여 하위 폴더 플랜에 마크업을 누적한 지속 상태.</div>
+            <div class="nested-card" style="border-left-color: #f44336;"><span class="badge badge-err">🚨 블록 (Blocked)</span> 소스 빌드 브레이킹 크래시가 발생했거나 백엔드 API 미개발 등 외부 디펜던시 교착으로 인해 해당 폴더 플랜이 전면 동결된 긴급 조율 상태.</div>
+        </div>
+    </div>
+</div>
+
+<script>
+    function openTab(tabId) {
+        // 모든 탭 콘텐츠 숨기기
+        const contents = document.querySelectorAll('.tab-content');
+        contents.forEach(content => content.classList.remove('active'));
+
+        // 모든 탭 버튼 활성화 해제
+        const buttons = document.querySelectorAll('.tab-btn');
+        buttons.forEach(button => button.classList.remove('active'));
+
+        // 선택된 탭 콘텐츠 및 버튼 활성화
+        document.getElementById(tabId).classList.add('active');
+        event.currentTarget.classList.add('active');
+    }
+</script>
+
+</body>
+</html>
